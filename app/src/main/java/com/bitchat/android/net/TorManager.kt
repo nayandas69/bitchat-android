@@ -202,6 +202,8 @@ object TorManager {
             lifecycleState = LifecycleState.RUNNING
             startInactivityMonitoring()
 
+            // Removed onion service startup (BLE-only file transfer in this branch)
+
         } catch (e: Exception) {
             Log.e(TAG, "Error starting Arti on port $currentSocksPort: ${e.message}")
             _status.value = _status.value.copy(state = TorState.ERROR)
