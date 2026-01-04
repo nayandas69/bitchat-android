@@ -47,7 +47,7 @@ class BluetoothPacketBroadcaster(
     
     companion object {
         private const val TAG = "BluetoothPacketBroadcaster"
-        private const val CLEANUP_DELAY = 500L
+        private const val CLEANUP_DELAY = com.bitchat.android.util.AppConstants.Mesh.BROADCAST_CLEANUP_DELAY_MS
     }
 
     // Optional nickname resolver injected by higher layer (peerID -> nickname?)
@@ -73,9 +73,17 @@ class BluetoothPacketBroadcaster(
         try {
             val fromNick = incomingPeer?.let { nicknameResolver?.invoke(it) }
             val toNick = toPeer?.let { nicknameResolver?.invoke(it) }
-            val isRelay = (incomingAddr != null || incomingPeer != null)
-            
-            com.bitchat.android.ui.debug.DebugSettingsManager.getInstance().logPacketRelayDetailed(
+            val manager = com.bitchat.android.ui.debug.DebugSettingsManager.getInstance()
+            // Always log outgoing for the actual transmission target
+            manager.logOutgoing(
+                packetType = typeName,
+                toPeerID = toPeer,
+                toNickname = toNick,
+                toDeviceAddress = toDeviceAddress,
+                previousHopPeerID = incomingPeer
+            )
+            // Keep the verbose relay message for human readability
+            manager.logPacketRelayDetailed(
                 packetType = typeName,
                 senderPeerID = senderPeerID,
                 senderNickname = senderNick,
@@ -86,7 +94,7 @@ class BluetoothPacketBroadcaster(
                 toNickname = toNick,
                 toDeviceAddress = toDeviceAddress,
                 ttl = ttl,
-                isRelay = isRelay
+                isRelay = true
             )
         } catch (_: Exception) { 
             // Silently ignore debug logging failures

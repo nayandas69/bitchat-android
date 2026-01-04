@@ -20,16 +20,18 @@ class BluetoothConnectionTracker(
     
     companion object {
         private const val TAG = "BluetoothConnectionTracker"
-        private const val CONNECTION_RETRY_DELAY = 5000L
-        private const val MAX_CONNECTION_ATTEMPTS = 3
-        private const val CLEANUP_DELAY = 500L
-        private const val CLEANUP_INTERVAL = 30000L // 30 seconds
+        private const val CONNECTION_RETRY_DELAY = com.bitchat.android.util.AppConstants.Mesh.CONNECTION_RETRY_DELAY_MS
+        private const val MAX_CONNECTION_ATTEMPTS = com.bitchat.android.util.AppConstants.Mesh.MAX_CONNECTION_ATTEMPTS
+        private const val CLEANUP_DELAY = com.bitchat.android.util.AppConstants.Mesh.CONNECTION_CLEANUP_DELAY_MS
+        private const val CLEANUP_INTERVAL = com.bitchat.android.util.AppConstants.Mesh.CONNECTION_CLEANUP_INTERVAL_MS // 30 seconds
     }
     
     // Connection tracking - reduced memory footprint
     private val connectedDevices = ConcurrentHashMap<String, DeviceConnection>()
     private val subscribedDevices = CopyOnWriteArrayList<BluetoothDevice>()
     val addressPeerMap = ConcurrentHashMap<String, String>()
+    // Track whether we have seen the first ANNOUNCE on a given device connection
+    private val firstAnnounceSeen = ConcurrentHashMap<String, Boolean>()
     
     // RSSI tracking from scan results (for devices we discover but may connect as servers)
     private val scanRSSI = ConcurrentHashMap<String, Int>()
@@ -91,6 +93,8 @@ class BluetoothConnectionTracker(
         Log.d(TAG, "Tracker: Adding device connection for $deviceAddress (isClient: ${deviceConn.isClient}")
         connectedDevices[deviceAddress] = deviceConn
         pendingConnections.remove(deviceAddress)
+        // Mark as awaiting first ANNOUNCE on this connection
+        firstAnnounceSeen[deviceAddress] = false
     }
     
     /**
@@ -194,7 +198,8 @@ class BluetoothConnectionTracker(
             }
             
             // Update connection attempt atomically
-            val attempts = (currentAttempt?.attempts ?: 0) + 1
+            // If the previous attempt window expired, reset backoff to 1; otherwise increment
+            val attempts = if (currentAttempt?.isExpired() == true) 1 else (currentAttempt?.attempts ?: 0) + 1
             pendingConnections[deviceAddress] = ConnectionAttempt(attempts)
             Log.d(TAG, "Tracker: Added pending connection for $deviceAddress (attempts: $attempts)")
             return true
@@ -279,7 +284,7 @@ class BluetoothConnectionTracker(
             subscribedDevices.removeAll { it.address == deviceAddress }
             addressPeerMap.remove(deviceAddress)
         }
-        pendingConnections.remove(deviceAddress)
+        firstAnnounceSeen.remove(deviceAddress)
         Log.d(TAG, "Cleaned up device connection for $deviceAddress")
     }
     
@@ -313,6 +318,21 @@ class BluetoothConnectionTracker(
         addressPeerMap.clear()
         pendingConnections.clear()
         scanRSSI.clear()
+        firstAnnounceSeen.clear()
+    }
+
+    /**
+     * Mark that we have received the first ANNOUNCE over this device connection.
+     */
+    fun noteAnnounceReceived(deviceAddress: String) {
+        firstAnnounceSeen[deviceAddress] = true
+    }
+
+    /**
+     * Check whether the first ANNOUNCE has been seen for a device connection.
+     */
+    fun hasSeenFirstAnnounce(deviceAddress: String): Boolean {
+        return firstAnnounceSeen[deviceAddress] == true
     }
     
     /**

@@ -15,6 +15,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bitchat.android.nostr.NostrProofOfWork
+import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bitchat.android.R
 import com.bitchat.android.nostr.PoWPreferenceManager
 
 /**
@@ -25,9 +28,9 @@ fun PoWStatusIndicator(
     modifier: Modifier = Modifier,
     style: PoWIndicatorStyle = PoWIndicatorStyle.COMPACT
 ) {
-    val powEnabled by PoWPreferenceManager.powEnabled.collectAsState()
-    val powDifficulty by PoWPreferenceManager.powDifficulty.collectAsState()
-    val isMining by PoWPreferenceManager.isMining.collectAsState()
+    val powEnabled by PoWPreferenceManager.powEnabled.collectAsStateWithLifecycle()
+    val powDifficulty by PoWPreferenceManager.powDifficulty.collectAsStateWithLifecycle()
+    val isMining by PoWPreferenceManager.isMining.collectAsStateWithLifecycle()
     val colorScheme = MaterialTheme.colorScheme
     val isDark = colorScheme.background.red + colorScheme.background.green + colorScheme.background.blue < 1.5f
     
@@ -54,7 +57,7 @@ fun PoWStatusIndicator(
                     
                     Icon(
                         imageVector = Icons.Filled.Security,
-                        contentDescription = "Mining PoW",
+                        contentDescription = stringResource(R.string.cd_mining_pow),
                         tint = Color(0xFFFF9500), // Orange for mining
                         modifier = Modifier
                             .size(12.dp)
@@ -63,7 +66,7 @@ fun PoWStatusIndicator(
                 } else {
                     Icon(
                         imageVector = Icons.Filled.Security,
-                        contentDescription = "PoW Enabled",
+                        contentDescription = stringResource(R.string.cd_pow_enabled),
                         tint = if (isDark) Color(0xFF32D74B) else Color(0xFF248A3D), // Green when ready
                         modifier = Modifier.size(12.dp)
                     )
@@ -85,7 +88,7 @@ fun PoWStatusIndicator(
                     // PoW icon
                     Icon(
                         imageVector = Icons.Filled.Security,
-                        contentDescription = "Proof of Work",
+                        contentDescription = stringResource(R.string.cd_proof_of_work),
                         tint = if (isMining) Color(0xFFFF9500) else {
                             if (isDark) Color(0xFF32D74B) else Color(0xFF248A3D)
                         },
@@ -95,9 +98,9 @@ fun PoWStatusIndicator(
                     // Status text
                     Text(
                         text = if (isMining) {
-                            "mining..."
+                            stringResource(R.string.pow_mining_ellipsis)
                         } else {
-                            "pow: ${powDifficulty}bit"
+                            stringResource(R.string.pow_label_format, powDifficulty)
                         },
                         fontSize = 11.sp,
                         fontFamily = FontFamily.Monospace,
@@ -109,7 +112,7 @@ fun PoWStatusIndicator(
                     // Time estimate
                     if (!isMining && powDifficulty > 0) {
                         Text(
-                            text = "(~${NostrProofOfWork.estimateMiningTime(powDifficulty)})",
+                            text = stringResource(R.string.pow_time_estimate, NostrProofOfWork.estimateMiningTime(powDifficulty)),
                             fontSize = 9.sp,
                             fontFamily = FontFamily.Monospace,
                             color = colorScheme.onSurface.copy(alpha = 0.5f)
